@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Global IAM Groups and Policies Creation (with MFA enforcement)'
+
+Resources:
+  # MFA enforcement policy - to be used by all groups
+  EnforceMFAPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'policy-enforce-mfa'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowViewAccountInfo
+            Effect: Allow
+            Action:
+              - 'iam:GetAccountPasswordPolicy'
+              - 'iam:GetAccountSummary'
+              - 'iam:ListVirtualMFADevices'
+            Resource: '*'
+          - Sid: AllowManageOwnPasswords
+            Effect: Allow
+            Action:
+              - 'iam:ChangePassword'
+              - 'iam:GetUser'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+          - Sid: AllowManageOwnAccessKeys
+            Effect: Allow
+            Action:
+              - 'iam:CreateAccessKey'
+              - 'iam:DeleteAccessKey'
+              - 'iam:ListAccessKeys'
+              - 'iam:UpdateAccessKey'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+          - Sid: AllowManageOwnSigningCertificates
+            Effect: Allow
+            Action:
+              - 'iam:DeleteSigningCertificate'
+              - 'iam:ListSigningCertificates'
+              - 'iam:UpdateSigningCertificate'
+              - 'iam:UploadSigningCertificate'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+          - Sid: AllowManageOwnSSHPublicKeys
+            Effect: Allow
+            Action:
+              - 'iam:DeleteSSHPublicKey'
+              - 'iam:GetSSHPublicKey'
+              - 'iam:ListSSHPublicKeys'
+              - 'iam:UpdateSSHPublicKey'
+              - 'iam:UploadSSHPublicKey'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+          - Sid: AllowManageOwnVirtualMFADevice
+            Effect: Allow
+            Action:
+              - 'iam:CreateVirtualMFADevice'
+              - 'iam:DeleteVirtualMFADevice'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:mfa/${!aws:username}'
+          - Sid: AllowManageOwnUserMFA
+            Effect: Allow
+            Action:
+              - 'iam:DeactivateMFADevice'
+              - 'iam:EnableMFADevice'
+              - 'iam:ListMFADevices'
+              - 'iam:ResyncMFADevice'
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+          - Sid: DenyAllExceptListedIfNoMFA
+            Effect: Deny
+            NotAction:
+              - 'iam:CreateVirtualMFADevice'
+              - 'iam:EnableMFADevice'
+              - 'iam:GetUser'
+              - 'iam:ListMFADevices'
+              - 'iam:ListVirtualMFADevices'
+              - 'iam:ResyncMFADevice'
+              - 'iam:ChangePassword'
+              - 'sts:GetSessionToken'
+            Resource: '*'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'false'
+
+  # Global Admin assume role policy
+  AdminAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'policy-assume-role-admin'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 'arn:aws:iam::*:role/role-admin'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+
+  # Global Developer assume role policy
+  DeveloperAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'policy-assume-role-developer'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 'arn:aws:iam::*:role/role-developer'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+
+  # Global Operator assume role policy
+  OperatorAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'policy-assume-role-operator'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 'arn:aws:iam::*:role/role-operator'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+
+  # Global Admin group
+  AdminGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: 'group-admin'
+      ManagedPolicyArns:
+        - !Ref EnforceMFAPolicy
+        - !Ref AdminAssumeRolePolicy
+
+  # Global Developer group
+  DeveloperGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: 'group-developer'
+      ManagedPolicyArns:
+        - !Ref EnforceMFAPolicy
+        - !Ref DeveloperAssumeRolePolicy
+
+  # Global Operator group
+  OperatorGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: 'group-operator'
+      ManagedPolicyArns:
+        - !Ref EnforceMFAPolicy
+        - !Ref OperatorAssumeRolePolicy
+
+Outputs:
+  EnforceMFAPolicyArn:
+    Description: 'ARN of the MFA enforcement policy'
+    Value: !Ref EnforceMFAPolicy
+    Export:
+      Name: EnforceMFAPolicyArn
+  AdminGroupName:
+    Description: 'Global admin group name'
+    Value: !Ref AdminGroup
+  DeveloperGroupName:
+    Description: 'Global developer group name'
+    Value: !Ref DeveloperGroup
+  OperatorGroupName:
+    Description: 'Global operator group name'
+    Value: !Ref OperatorGroup 

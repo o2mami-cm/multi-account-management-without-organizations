@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM Role Creation for Cross-Account Access'
+
+Parameters:
+  AdminAccountId:
+    Type: String
+    Description: 'Admin account ID'
+
+Resources:
+  # Admin role
+  AdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: role-admin
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AdminAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+      Tags:
+        - Key: ManagedResource
+          Value: 'true'
+          
+  # Developer role (PowerUserAccess)
+  DeveloperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: role-developer
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AdminAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/PowerUserAccess'
+      Tags:
+        - Key: ManagedResource
+          Value: 'true'
+                
+  # Operator role
+  OperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: role-operator
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AdminAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+      Tags:
+        - Key: ManagedResource
+          Value: 'true'
+
+Outputs:
+  AdminRoleArn:
+    Description: 'Admin role ARN'
+    Value: !GetAtt AdminRole.Arn
+  DeveloperRoleArn:
+    Description: 'Developer role ARN'
+    Value: !GetAtt DeveloperRole.Arn
+  OperatorRoleArn:
+    Description: 'Operator role ARN'
+    Value: !GetAtt OperatorRole.Arn

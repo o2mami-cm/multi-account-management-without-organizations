@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation StackSets Execution Role Creation'
+
+Parameters:
+  AdminAccountId:
+    Type: String
+    Description: 'AWS Account ID of the admin account'
+
+Resources:
+  StackSetExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSCloudFormationStackSetExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AdminAccountId}:root'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+Outputs:
+  StackSetExecutionRoleArn:
+    Description: 'StackSets Execution Role ARN'
+    Value: !GetAtt StackSetExecutionRole.Arn

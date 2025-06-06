@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation StackSets Administration Role Creation'
+
+Resources:
+  StackSetAdministrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSCloudFormationStackSetAdministrationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: 'sts:AssumeRole'
+            
+  StackSetAdministrationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: StackSetAdministrationPolicy
+      Roles:
+        - !Ref StackSetAdministrationRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 'arn:aws:iam::*:role/AWSCloudFormationStackSetExecutionRole'
+
+Outputs:
+  StackSetAdministrationRoleArn:
+    Description: 'StackSets Administration Role ARN'
+    Value: !GetAtt StackSetAdministrationRole.Arn

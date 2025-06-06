@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Project-specific IAM Groups and Policies Creation (with MFA enforcement)'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Account Configuration"
+        Parameters:
+          - ProdAccountId
+          - StagingAccountId
+          - HasStagingAccount
+      - Label:
+          default: "Project Configuration"
+        Parameters:
+          - ProjectName
+    ParameterLabels:
+      ProdAccountId:
+        default: "Production Account ID"
+      StagingAccountId:
+        default: "Staging Account ID"
+      HasStagingAccount:
+        default: "Has Staging Account"
+      ProjectName:
+        default: "Project Name"
+
+Parameters:
+  ProdAccountId:
+    Type: String
+    Description: 'Production account ID'
+  StagingAccountId:
+    Type: String
+    Description: 'Staging account ID (optional if HasStagingAccount is false)'
+    Default: ''
+  HasStagingAccount:
+    Type: String
+    Description: 'Whether this project has a staging account'
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ProjectName:
+    Type: String
+    Description: 'Project name to be used in group naming'
+
+Conditions:
+  HasStaging:
+    Fn::Equals: 
+      - !Ref HasStagingAccount
+      - 'true'
+
+Resources:
+  # Admin role policy
+  AdminAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'policy-assume-admin-role-${ProjectName}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 
+              - !Sub 'arn:aws:iam::${ProdAccountId}:role/role-admin'
+              - Fn::If:
+                - HasStaging
+                - !Sub 'arn:aws:iam::${StagingAccountId}:role/role-admin'
+                - !Ref AWS::NoValue
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+
+  # Developer role policy
+  DeveloperAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'policy-assume-developer-role-${ProjectName}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 
+              - !Sub 'arn:aws:iam::${ProdAccountId}:role/role-developer'
+              - Fn::If:
+                - HasStaging
+                - !Sub 'arn:aws:iam::${StagingAccountId}:role/role-developer'
+                - !Ref AWS::NoValue
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+                
+  # Operator role policy
+  OperatorAssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'policy-assume-operator-role-${ProjectName}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 
+              - !Sub 'arn:aws:iam::${ProdAccountId}:role/role-operator'
+              - Fn::If:
+                - HasStaging
+                - !Sub 'arn:aws:iam::${StagingAccountId}:role/role-operator'
+                - !Ref AWS::NoValue
+            Condition:
+              BoolIfExists:
+                aws:MultiFactorAuthPresent: 'true'
+
+  # Admin group
+  AdminGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub 'group-admin-${ProjectName}'
+      ManagedPolicyArns:
+        - !ImportValue EnforceMFAPolicyArn
+        - !Ref AdminAssumeRolePolicy
+
+  # Developer group
+  DeveloperGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub 'group-developer-${ProjectName}'
+      ManagedPolicyArns:
+        - !ImportValue EnforceMFAPolicyArn
+        - !Ref DeveloperAssumeRolePolicy
+                
+  # Operator group
+  OperatorGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub 'group-operator-${ProjectName}'
+      ManagedPolicyArns:
+        - !ImportValue EnforceMFAPolicyArn
+        - !Ref OperatorAssumeRolePolicy
+
+Outputs:
+  AdminGroupName:
+    Description: 'Admin group name'
+    Value: !Ref AdminGroup
+  DeveloperGroupName:
+    Description: 'Developer group name'
+    Value: !Ref DeveloperGroup
+  OperatorGroupName:
+    Description: 'Operator group name'
+    Value: !Ref OperatorGroup
