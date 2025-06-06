@@ -36,4 +36,4 @@ AWS Organizationsを使用せずに、Jumpアカウント方式でマルチア�
 
 実装の詳細手順については、以下のブログ記事をご参照ください。
 
-**📝 [AWS Organizations不要：CloudFormation StackSetsを使って、マルチアカウント環境でJumpアカウント方式を実装してみた](ブログURL)**
+**📝 [AWS Organizations不要：CloudFormation StackSetsを使って、マルチアカウント環境でJumpアカウント方式を実装してみた](https://dev.classmethod.jp/articles/multi-account-management-without-organizations/)**
