@@ -16,6 +16,7 @@ Resources:
               - 'iam:GetAccountPasswordPolicy'
               - 'iam:GetAccountSummary'
               - 'iam:ListVirtualMFADevices'
+              - 'iam:ListUsers'
             Resource: '*'
           - Sid: AllowManageOwnPasswords
             Effect: Allow
@@ -70,6 +71,7 @@ Resources:
               - 'iam:GetUser'
               - 'iam:ListMFADevices'
               - 'iam:ListVirtualMFADevices'
+              - 'iam:ListUsers'              
               - 'iam:ResyncMFADevice'
               - 'iam:ChangePassword'
               - 'sts:GetSessionToken'
